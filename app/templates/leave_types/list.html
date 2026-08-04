@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Leave Types{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>Leave Types</h1>
+    <a href="{{ url_for('leave_types.create_leave_type') }}" class="btn btn-primary">+ Add leave type</a>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Company</th>
+          <th>Annual Quota</th>
+          <th>Accrual</th>
+          <th>Carry Fwd</th>
+          <th>Approval Needed</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lt in types %}
+        <tr>
+          <td>{{ lt.name }}</td>
+          <td>{{ lt.company.name }}</td>
+          <td>{{ lt.annual_quota }}</td>
+          <td>{{ lt.accrual_type }}</td>
+          <td>{{ "Yes (max " ~ lt.max_carry_forward ~ ")" if lt.carry_forward else "No" }}</td>
+          <td>{{ "Yes" if lt.requires_approval else "No" }}</td>
+          <td>
+            <span class="badge {{ 'badge-success' if lt.is_active else 'badge-muted' }}">
+              {{ "Active" if lt.is_active else "Inactive" }}
+            </span>
+          </td>
+          <td class="actions">
+            <a href="{{ url_for('leave_types.edit_leave_type', leave_type_id=lt.id) }}" class="btn-text">Edit</a>
+            {% if lt.is_active %}
+            <form method="post" action="{{ url_for('leave_types.delete_leave_type', leave_type_id=lt.id) }}" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn-text-danger" onclick="return confirm('Deactivate this leave type?')">Deactivate</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr class="empty-row"><td colspan="8">No leave types yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

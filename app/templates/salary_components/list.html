@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Salary Components{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>Salary Components</h1>
+    <a href="{{ url_for('salary_components.create_salary_component') }}" class="btn btn-primary">+ Add component</a>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Company</th>
+          <th>Category</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in components %}
+        <tr>
+          <td>{{ c.name }}</td>
+          <td>{{ c.company.name }}</td>
+          <td>
+            <span class="badge {{ 'badge-earning' if c.category == 'earning' else 'badge-deduction' }}">
+              {{ c.category }}
+            </span>
+          </td>
+          <td>
+            <span class="badge {{ 'badge-success' if c.is_active else 'badge-muted' }}">
+              {{ "Active" if c.is_active else "Inactive" }}
+            </span>
+          </td>
+          <td class="actions">
+            <a href="{{ url_for('salary_components.edit_salary_component', component_id=c.id) }}" class="btn-text">Edit</a>
+            {% if c.is_active %}
+            <form method="post" action="{{ url_for('salary_components.delete_salary_component', component_id=c.id) }}" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn-text-danger" onclick="return confirm('Deactivate this salary component?')">Deactivate</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr class="empty-row"><td colspan="5">No salary components yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

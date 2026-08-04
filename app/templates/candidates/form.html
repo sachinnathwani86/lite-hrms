@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit" if candidate else "New" }} Candidate{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>{{ "Edit" if candidate else "New" }} Candidate</h1>
+  </div>
+
+  <div class="card">
+    <form method="post" class="stacked">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label for="full_name">Full Name</label>
+      <input type="text" id="full_name" name="full_name" value="{{ candidate.full_name if candidate else '' }}" required>
+
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" value="{{ candidate.email if candidate else '' }}">
+      <span class="text-muted">Optional at offer stage — required before converting to an employee.</span>
+
+      <label for="designation_id">Designation</label>
+      <select id="designation_id" name="designation_id">
+        <option value="">&mdash; none &mdash;</option>
+        {% for d in designations %}
+        <option value="{{ d.id }}" {{ "selected" if candidate and candidate.designation_id == d.id else "" }}>{{ d.title }} ({{ d.company.name }})</option>
+        {% endfor %}
+      </select>
+
+      <label for="proposed_salary">Proposed Monthly Salary</label>
+      <input type="number" step="0.01" id="proposed_salary" name="proposed_salary"
+             value="{{ candidate.proposed_salary if candidate else 0 }}" required>
+
+      <label for="offer_date">Offer Date</label>
+      <input type="date" id="offer_date" name="offer_date" value="{{ candidate.offer_date if candidate else '' }}">
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a href="{{ url_for('candidates.list_candidates') }}" class="btn-text">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

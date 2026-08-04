@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+  <div class="page-header dashboard-header">
+    <div><h1>{{ "People operations overview" if is_admin else "Welcome back" }}</h1><p class="text-muted">{{ company_name }} &middot; {{ today.strftime("%A, %d %B %Y") }}</p></div>
+    {% if is_admin %}<a href="{{ url_for('employees.create_employee') }}" class="btn btn-primary">+ Add employee</a>{% else %}<a href="{{ url_for('leave_requests.create_request') }}" class="btn btn-primary">+ Request leave</a>{% endif %}
+  </div>
+  <div class="metric-grid">
+    <div class="metric-card"><span class="metric-label">{{ "Active employees" if is_admin else "Your attendance" }}</span><strong>{{ employee_count if is_admin else attendance_count }}</strong><small>{{ "Across your workspace" if is_admin else ("Marked today" if attendance_count else "Not marked today") }}</small></div>
+    <div class="metric-card"><span class="metric-label">{{ "Present today" if is_admin else "Pending requests" }}</span><strong>{{ attendance_count if is_admin else pending_count }}</strong><small>{{ "Attendance records today" if is_admin else "Awaiting action" }}</small></div>
+    <div class="metric-card"><span class="metric-label">{{ "Pending approvals" if is_admin else "Leave balances" }}</span><strong>{{ pending_count if is_admin else "View" }}</strong><small>{{ "Needs HR attention" if is_admin else "Review your available days" }}</small></div>
+    <div class="metric-card metric-accent"><span class="metric-label">Next holiday</span><strong>{{ upcoming_holidays[0].date.strftime("%d %b") if upcoming_holidays else "-" }}</strong><small>{{ upcoming_holidays[0].name if upcoming_holidays else "No upcoming holidays" }}</small></div>
+  </div>
+  <div class="dashboard-grid">
+    <section class="card"><div class="section-heading"><div><span class="section-kicker">Activity</span><h2>Recent leave requests</h2></div><a href="{{ url_for('leave_requests.list_my_requests') }}" class="btn-text">View all</a></div>
+      <div class="table-wrap"><table><thead><tr><th>Leave type</th>{% if is_admin %}<th>Employee</th>{% endif %}<th>Dates</th><th>Status</th></tr></thead><tbody>
+      {% for r in recent_requests %}<tr><td>{{ r.leave_type.name }}</td>{% if is_admin %}<td>{{ r.employee.full_name }}</td>{% endif %}<td>{{ r.start_date }} - {{ r.end_date }}</td><td><span class="badge {{ 'badge-success' if r.status == 'approved' else ('badge-muted' if r.status == 'rejected' else 'badge-warning') }}">{{ r.status|title }}</span></td></tr>{% else %}<tr class="empty-row"><td colspan="4">No leave activity yet.</td></tr>{% endfor %}
+      </tbody></table></div>
+    </section>
+    <section class="card"><div class="section-heading"><div><span class="section-kicker">Planning</span><h2>Upcoming holidays</h2></div><a href="{{ url_for('holidays.list_holidays') }}" class="btn-text">Calendar</a></div>
+      <div class="holiday-list">{% for h in upcoming_holidays %}<div class="holiday-item"><span class="holiday-date">{{ h.date.strftime('%d') }}<small>{{ h.date.strftime('%b') }}</small></span><span><strong>{{ h.name }}</strong><small>{{ h.company.name }}</small></span></div>{% else %}<p class="text-muted">No upcoming holidays configured.</p>{% endfor %}</div>
+    </section>
+  </div>
+{% endblock %}

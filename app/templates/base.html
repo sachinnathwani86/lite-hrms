@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}Lite HRMS{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  {% if current_user.is_authenticated %}
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="{{ url_for('dashboard.home') }}">
+        <span class="brand-mark">L</span>
+        <span><strong>Lite HRMS</strong><small>People operations</small></span>
+      </a>
+      <div class="workspace-label">Workspace</div>
+      <div class="workspace-switcher"><span class="status-dot"></span><span class="workspace-name">{{ active_workspace.name }}</span></div>
+      <nav class="sidebar-nav" aria-label="Main navigation">
+        <a href="{{ url_for('dashboard.home') }}" class="{{ 'active' if request.endpoint == 'dashboard.home' }}"><span class="nav-icon">&#9672;</span> Dashboard</a>
+        <div class="nav-section">My work</div>
+        <a href="{{ url_for('attendance.my_attendance') }}" class="{{ 'active' if request.endpoint == 'attendance.my_attendance' }}"><span class="nav-icon">&#9632;</span> Attendance</a>
+        <a href="{{ url_for('leave_requests.list_my_requests') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('leave_requests.') and not request.endpoint.startswith('leave_requests.admin') }}"><span class="nav-icon">&#10003;</span> Leave requests</a>
+        <a href="{{ url_for('leave_requests.calendar_view') }}" class="{{ 'active' if request.endpoint == 'leave_requests.calendar_view' }}"><span class="nav-icon">&#9634;</span> Leave calendar</a>
+        {% if current_user.can_manage_people() %}
+        <div class="nav-section">People</div>
+        <a href="{{ url_for('employees.list_employees') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('employees.') }}"><span class="nav-icon">&#9673;</span> Employees</a>
+        <a href="{{ url_for('candidates.list_candidates') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('candidates.') }}"><span class="nav-icon">&#43;</span> Candidates</a>
+        {% endif %}
+        {% if current_user.can_approve() %}
+        <a href="{{ url_for('attendance.admin_grid') }}" class="{{ 'active' if request.endpoint == 'attendance.admin_grid' }}"><span class="nav-icon">&#9638;</span> Attendance grid</a>
+        <div class="nav-section">Administration</div>
+        <a href="{{ url_for('leave_requests.admin_queue') }}" class="{{ 'active' if request.endpoint == 'leave_requests.admin_queue' }}"><span class="nav-icon">&#9888;</span> Approvals</a>
+        {% endif %}
+        {% if current_user.can_manage_people() %}
+        <a href="{{ url_for('leave_types.list_leave_types') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('leave_types.') }}"><span class="nav-icon">&#10022;</span> Leave types</a>
+        <a href="{{ url_for('designations.list_designations') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('designations.') }}"><span class="nav-icon">&#9733;</span> Designations</a>
+         <a href="{{ url_for('salary_components.list_salary_components') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('salary_components.') }}"><span class="nav-icon">&#8377;</span> Salary components</a>
+         <a href="{{ url_for('audit.list_audit_logs') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('audit.') }}"><span class="nav-icon">&#9641;</span> Audit log</a>
+         <a href="{{ url_for('reports.index') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('reports.') }}"><span class="nav-icon">&#9636;</span> Reports</a>
+         <a href="{{ url_for('payroll_admin.history') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('payroll_admin.') }}"><span class="nav-icon">&#8377;</span> Payroll history</a>
+         <a href="{{ url_for('company_profile.edit_profile') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('company_profile.') }}"><span class="nav-icon">&#9633;</span> Company profile</a>
+        {% endif %}
+        <a href="{{ url_for('holidays.list_holidays') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('holidays.') }}"><span class="nav-icon">&#9734;</span> Holidays</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-card">
+          <span class="user-avatar">{{ current_user.full_name[0] | upper }}</span>
+          <span class="user-details"><strong>{{ current_user.full_name }}</strong><small>{{ current_user.role|replace('_', ' ')|title }}</small></span>
+          <a class="profile-link" href="{{ url_for('self_service.profile') }}" title="My profile">&#9673;</a>
+          <form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="logout-link" type="submit" title="Log out">&#8594;</button></form>
+        </div>
+      </div>
+    </aside>
+    <main class="main-area">
+      <header class="topbar">
+        <div class="breadcrumb"><span>Workspace</span><b>/</b><strong>{{ self.title() }}</strong></div>
+        <div class="topbar-actions"><a class="notification-link" href="{{ url_for('notifications.list_notifications') }}" title="Notifications">&#128276;{% if unread_notification_count %}<b>{{ unread_notification_count }}</b>{% endif %}</a><span class="today-label">{{ active_workspace.name }}</span><span class="topbar-divider"></span><span class="topbar-avatar">{{ current_user.full_name[0] | upper }}</span></div>
+      </header>
+      <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endwith %}
+  {% else %}
+  <div class="public-shell">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+  {% endif %}
+    {% block content %}{% endblock %}
+  {% if current_user.is_authenticated %}
+      </div>
+    </main>
+  </div>
+  {% else %}
+  </div>
+  {% endif %}
+</body>
+</html>

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit" if component else "New" }} Salary Component{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>{{ "Edit" if component else "New" }} Salary Component</h1>
+  </div>
+
+  <div class="card">
+    <form method="post" class="stacked">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" value="{{ component.name if component else '' }}" required>
+
+      <label for="category">Category</label>
+      <select id="category" name="category">
+        {% for opt in ["earning", "deduction"] %}
+        <option value="{{ opt }}" {{ "selected" if component and component.category == opt else "" }}>{{ opt }}</option>
+        {% endfor %}
+      </select>
+
+      {% if component %}
+      <div class="checkbox-row">
+        <input type="checkbox" id="is_active" name="is_active"
+               {{ "checked" if component.is_active else "" }}>
+        <label for="is_active">Active</label>
+      </div>
+      {% endif %}
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a href="{{ url_for('salary_components.list_salary_components') }}" class="btn-text">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Audit Log{% endblock %}
+{% block content %}
+  <div class="page-header"><div><h1>Audit log</h1><p class="text-muted">Recent changes to sensitive HR records.</p></div></div>
+  <div class="card"><div class="table-wrap"><table><thead><tr><th>When</th><th>Actor</th><th>Action</th><th>Record</th><th>Details</th></tr></thead><tbody>{% for log in logs %}<tr><td>{{ log.created_at.strftime('%d %b %Y, %H:%M') }}</td><td>{{ log.actor.full_name if log.actor else 'System' }}</td><td><span class="badge badge-muted">{{ log.action|replace('_', ' ')|title }}</span></td><td>{{ log.entity|title }}{% if log.entity_id %} #{{ log.entity_id }}{% endif %}</td><td>{{ log.details or '-' }}</td></tr>{% else %}<tr class="empty-row"><td colspan="5">No audit entries yet.</td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

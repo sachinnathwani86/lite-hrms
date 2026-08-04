@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Employees{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>Employees</h1>
+    <div class="page-actions"><a href="{{ url_for('employees.import_employees') }}" class="btn btn-outline">Import CSV</a><a href="{{ url_for('employees.create_employee') }}" class="btn btn-primary">+ Add employee</a></div>
+  </div>
+
+  <div class="card list-filters">
+    <form method="get" class="filter-form"><input type="search" name="q" value="{{ search }}" placeholder="Search name or email"><select name="status"><option value="active" {{ 'selected' if status == 'active' else '' }}>Active employees</option><option value="inactive" {{ 'selected' if status == 'inactive' else '' }}>Inactive employees</option><option value="all" {{ 'selected' if status == 'all' else '' }}>All employees</option></select><button class="btn btn-outline" type="submit">Filter</button></form>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Company</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Designation</th>
+          <th>Joined</th>
+          <th>Monthly Gross</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for emp in employees %}
+        <tr>
+          <td>
+            <div class="name-cell">
+              {% if emp.photo_filename %}
+              <img class="avatar" src="{{ url_for('static', filename='uploads/photos/' + emp.photo_filename) }}" alt="">
+              {% else %}
+              <span class="avatar-placeholder">{{ emp.full_name[0] | upper }}</span>
+              {% endif %}
+              {{ emp.full_name }}
+            </div>
+          </td>
+          <td>{{ emp.company.name }}</td>
+          <td>{{ emp.email }}</td>
+          <td>{{ emp.role }}</td>
+          <td>{{ emp.designation.title if emp.designation else "" }}</td>
+          <td>{{ emp.date_of_joining }}</td>
+          <td>{{ emp.monthly_gross }}</td>
+          <td>
+            <span class="badge {{ 'badge-success' if emp.is_active else 'badge-muted' }}">
+              {{ "Active" if emp.is_active else "Inactive" }}
+            </span>
+          </td>
+          <td class="actions">
+            <a href="{{ url_for('employees.edit_employee', employee_id=emp.id) }}" class="btn-text">Edit</a>
+            <a href="{{ url_for('employees.edit_salary', employee_id=emp.id) }}" class="btn-text">Salary</a>
+            <a href="{{ url_for('employees.download_payslip', employee_id=emp.id) }}" class="btn-text">Payslip</a>
+            <a href="{{ url_for('employees.download_fy_breakup', employee_id=emp.id) }}" class="btn-text">FY Breakup</a>
+            <a href="{{ url_for('employees.download_appointment_letter', employee_id=emp.id) }}" class="btn-text">Appointment</a>
+            {% if emp.is_active %}
+            <a href="{{ url_for('employees.relieve_employee', employee_id=emp.id) }}" class="btn-text-danger">Relieve</a>
+            {% else %}
+            <a href="{{ url_for('employees.download_termination_letter', employee_id=emp.id) }}" class="btn-text">Termination</a>
+            <a href="{{ url_for('employees.download_relieving_letter', employee_id=emp.id) }}" class="btn-text">Relieving</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr class="empty-row"><td colspan="9">No employees yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  {% if employees.pages > 1 %}<div class="pagination"><span>Page {{ employees.page }} of {{ employees.pages }}</span><div>{% if employees.has_prev %}<a class="btn btn-outline" href="{{ url_for('employees.list_employees', page=employees.prev_num, q=search, status=status) }}">Previous</a>{% endif %}{% if employees.has_next %}<a class="btn btn-outline" href="{{ url_for('employees.list_employees', page=employees.next_num, q=search, status=status) }}">Next</a>{% endif %}</div></div>{% endif %}
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit" if holiday else "New" }} Holiday{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>{{ "Edit" if holiday else "New" }} Holiday</h1>
+  </div>
+
+  <div class="card">
+    <form method="post" class="stacked">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" value="{{ holiday.name if holiday else '' }}" required>
+
+      <label for="date">Date</label>
+      <input type="date" id="date" name="date" value="{{ holiday.date if holiday else '' }}" required>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a href="{{ url_for('holidays.list_holidays') }}" class="btn-text">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

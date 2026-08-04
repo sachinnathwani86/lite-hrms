@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}My Profile{% endblock %}
+{% block content %}
+  <div class="page-header"><div><h1>My profile</h1><p class="text-muted">Keep your personal details and employee documents up to date.</p></div><a href="{{ url_for('auth.change_password') }}" class="btn btn-outline">Change password</a></div>
+  <div class="profile-grid">
+    <section class="card"><span class="section-kicker">Personal details</span><h2>Profile information</h2><form method="post" class="stacked"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label for="full_name">Full name</label><input type="text" id="full_name" name="full_name" value="{{ current_user.full_name }}" required>
+      <label for="email">Work email</label><input type="email" id="email" name="email" value="{{ current_user.email }}" required>
+      <label>Company</label><input type="text" value="{{ current_user.company.name }}" disabled>
+      <label>Role</label><input type="text" value="{{ current_user.role|replace('_', ' ')|title }}" disabled>
+      <div class="form-actions"><button type="submit" class="btn btn-primary">Save profile</button></div>
+    </form></section>
+    <section class="card"><div class="section-heading"><div><span class="section-kicker">Employee records</span><h2>My documents</h2></div></div>
+      <form method="post" action="{{ url_for('self_service.upload_document') }}" enctype="multipart/form-data" class="document-upload"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label for="title">Document title</label><input type="text" id="title" name="title" placeholder="e.g. PAN card" required><label for="category">Category</label><select id="category" name="category"><option>Identity</option><option>Education</option><option>Employment</option><option>Other</option></select><label for="document">File</label><input type="file" id="document" name="document" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" required><button type="submit" class="btn btn-outline">Upload document</button></form>
+       <div class="document-list">{% for document in documents %}<div class="document-item"><span class="document-icon">DOC</span><span><strong>{{ document.title }}</strong><small>{{ document.category }} &middot; {{ document.uploaded_on.strftime('%d %b %Y') }}</small></span><a href="{{ url_for('self_service.download_document', document_id=document.id) }}" class="btn-text">Download</a><form method="post" action="{{ url_for('self_service.delete_document', document_id=document.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn-text-danger" type="submit">Remove</button></form></div>{% else %}<p class="text-muted">No documents uploaded yet.</p>{% endfor %}</div>
+    </section>
+  </div>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Salary — {{ employee.full_name }}{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>Salary Structure — {{ employee.full_name }}</h1>
+    <a href="{{ url_for('employees.list_employees') }}" class="btn-text">&larr; Back to Employees</a>
+  </div>
+
+  <div class="card">
+    {% set earnings = components | selectattr("category", "equalto", "earning") | list %}
+    {% set deductions = components | selectattr("category", "equalto", "deduction") | list %}
+
+    <form method="post" action="{{ url_for('employees.autofill_salary', employee_id=employee.id) }}"
+          style="margin-bottom: 1rem;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-text">
+        Auto-fill from gross ({{ employee.monthly_gross }})
+      </button>
+      <span class="text-muted">Splits into Basic / HRA / Conveyance / Medical / Special Allowance + Professional Tax. Overwrites those components.</span>
+    </form>
+
+    {% if not components %}
+      <p class="text-muted">
+        No salary components configured yet.
+        <a href="{{ url_for('salary_components.create_salary_component') }}">Add one</a> first.
+      </p>
+    {% else %}
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <table class="salary-table">
+        <thead>
+          <tr>
+            <th>Component</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if earnings %}
+          <tr class="section-heading"><td colspan="2">Earnings</td></tr>
+          {% for c in earnings %}
+          <tr>
+            <td>{{ c.name }}{% if not c.is_active %} <span class="badge badge-muted">inactive</span>{% endif %}</td>
+            <td class="amount">
+              <input type="number" step="0.01" min="0" name="amount_{{ c.id }}"
+                     value="{{ amounts.get(c.id, '') }}" placeholder="&mdash;">
+            </td>
+          </tr>
+          {% endfor %}
+          {% endif %}
+
+          {% if deductions %}
+          <tr class="section-heading"><td colspan="2">Deductions</td></tr>
+          {% for c in deductions %}
+          <tr>
+            <td>{{ c.name }}{% if not c.is_active %} <span class="badge badge-muted">inactive</span>{% endif %}</td>
+            <td class="amount">
+              <input type="number" step="0.01" min="0" name="amount_{{ c.id }}"
+                     value="{{ amounts.get(c.id, '') }}" placeholder="&mdash;">
+            </td>
+          </tr>
+          {% endfor %}
+          {% endif %}
+        </tbody>
+      </table>
+
+      <div class="salary-totals">
+        <span>Total Earnings <span class="value">{{ total_earnings }}</span></span>
+        <span>Total Deductions <span class="value">{{ total_deductions }}</span></span>
+        <span>Net Pay <span class="value">{{ total_earnings - total_deductions }}</span></span>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <span class="text-muted">Leave a field blank if it doesn't apply to this employee.</span>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+{% endblock %}

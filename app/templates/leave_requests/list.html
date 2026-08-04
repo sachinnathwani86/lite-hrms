@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}My Leave Requests{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>My Leave Requests</h1>
+    <a href="{{ url_for('leave_requests.create_request') }}" class="btn btn-primary">+ Request Leave</a>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Leave Type</th>
+          <th>Available</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in balances %}
+        <tr>
+          <td>{{ b.leave_type.name }}</td>
+          <td>{{ b.available }}</td>
+        </tr>
+        {% else %}
+        <tr class="empty-row"><td colspan="2">No leave balances yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Leave Type</th>
+          <th>Start</th>
+          <th>End</th>
+          <th>Days</th>
+          <th>Reason</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in requests %}
+        <tr>
+          <td>{{ r.leave_type.name }}</td>
+          <td>{{ r.start_date }}</td>
+          <td>{{ r.end_date }}</td>
+          <td>{{ r.days_count }}</td>
+          <td>{{ r.reason }}</td>
+          <td>
+            <span class="badge {{ 'badge-success' if r.status == 'approved' else ('badge-muted' if r.status == 'rejected' else '') }}">
+              {{ r.status | title }}
+            </span>
+          </td>
+        </tr>
+        {% else %}
+        <tr class="empty-row"><td colspan="6">No leave requests yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+{% endblock %}

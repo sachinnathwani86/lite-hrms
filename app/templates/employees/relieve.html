@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Relieve — {{ employee.full_name }}{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>Relieve {{ employee.full_name }}</h1>
+    <a href="{{ url_for('employees.list_employees') }}" class="btn-text">&larr; Back to Employees</a>
+  </div>
+
+  <div class="card">
+    <form method="post" class="stacked">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label for="relieving_date">Last Working Day</label>
+      <input type="date" id="relieving_date" name="relieving_date" value="{{ employee.relieving_date or '' }}" required>
+
+      <label for="termination_reason">Reason</label>
+      <textarea id="termination_reason" name="termination_reason" rows="3">{{ employee.termination_reason or '' }}</textarea>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary"
+                onclick="return confirm('This deactivates the employee and sets their last working day. Continue?')">
+          Relieve
+        </button>
+        <span class="text-muted">Termination and relieving letters will be available for download afterwards.</span>
+      </div>
+    </form>
+  </div>
+{% endblock %}

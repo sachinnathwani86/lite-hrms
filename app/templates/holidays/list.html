@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Holidays{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>Holidays</h1>
+    {% if current_user.can_manage_people() %}
+    <a href="{{ url_for('holidays.create_holiday') }}" class="btn btn-primary">+ Add holiday</a>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Company</th>
+          <th>Date</th>
+          {% if current_user.can_manage_people() %}<th></th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for h in holidays %}
+        <tr>
+          <td>{{ h.name }}</td>
+          <td>{{ h.company.name }}</td>
+          <td>{{ h.date }}</td>
+          {% if current_user.can_manage_people() %}
+          <td class="actions">
+            <a href="{{ url_for('holidays.edit_holiday', holiday_id=h.id) }}" class="btn-text">Edit</a>
+            <form method="post" action="{{ url_for('holidays.delete_holiday', holiday_id=h.id) }}" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn-text-danger" onclick="return confirm('Delete this holiday?')">Delete</button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        {% else %}
+        <tr class="empty-row"><td colspan="{{ 4 if current_user.can_manage_people() else 3 }}">No holidays added yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

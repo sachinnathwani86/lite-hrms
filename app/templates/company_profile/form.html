@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Company Profile{% endblock %}
+{% block content %}
+  <div class="page-header"><div><h1>Company profile</h1><p class="text-muted">This information powers the product welcome area, dashboard, letters, and payslips.</p></div></div>
+  <div class="card"><form method="post" class="stacked" enctype="multipart/form-data"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="name">Display name</label><input type="text" id="name" name="name" value="{{ company.name }}" required>
+    <label for="legal_name">Legal name</label><input type="text" id="legal_name" name="legal_name" value="{{ company.legal_name or '' }}">
+    <label for="address">Address</label><textarea id="address" name="address" rows="3">{{ company.address or '' }}</textarea>
+    <label for="phone">Phone</label><input type="text" id="phone" name="phone" value="{{ company.phone or '' }}">
+    <label for="email">Company email</label><input type="email" id="email" name="email" value="{{ company.email or '' }}">
+    <label for="website">Website</label><input type="text" id="website" name="website" value="{{ company.website or '' }}" placeholder="https://example.com">
+    <label for="letterhead">Letterhead</label><input type="file" id="letterhead" name="letterhead" accept=".png,.jpg,.jpeg,.webp">
+    {% if company.letterhead_filename %}<div class="checkbox-row"><input type="checkbox" id="remove_letterhead" name="remove_letterhead"><label for="remove_letterhead">Remove current letterhead</label></div>{% endif %}
+    <p class="text-muted">Office coordinates are optional and enable the 100m attendance geofence.</p>
+    <label for="office_latitude">Office latitude</label><input type="number" step="any" id="office_latitude" name="office_latitude" value="{{ company.office_latitude if company.office_latitude is not none else '' }}">
+    <label for="office_longitude">Office longitude</label><input type="number" step="any" id="office_longitude" name="office_longitude" value="{{ company.office_longitude if company.office_longitude is not none else '' }}">
+    <div class="form-actions"><button type="submit" class="btn btn-primary">Save company profile</button></div>
+  </form></div>
+{% endblock %}

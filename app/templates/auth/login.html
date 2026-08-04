@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+{% block content %}
+  <div class="login-wrap">
+    <div class="login-intro">
+      <div class="login-mark">L</div>
+      <p class="login-kicker">Lite HRMS</p>
+      <h1>People, payroll<br>and progress.</h1>
+      <p class="login-copy">A single workspace for your team&rsquo;s everyday people operations.</p>
+      <div class="login-rule"></div>
+      <span class="login-footnote">Secure employee workspace</span>
+    </div>
+    <div class="login-card">
+      <p class="form-kicker">Welcome back</p>
+      <h2>Sign in to your workspace</h2>
+      <p class="subtitle">Enter your details to continue to your people operations workspace.</p>
+      <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required>
+
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required>
+
+        <button type="submit" class="btn btn-primary">Login</button>
+      </form>
+    </div>
+  </div>
+{% endblock %}

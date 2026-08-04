@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}My Attendance{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>My Attendance</h1>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    {% if today_row %}
+      <p>
+        <span class="badge badge-success">Marked Present</span>
+        Checked in today at <b>{{ today_row.check_in.strftime("%H:%M") if today_row.check_in else "-" }}</b>
+        {% if today_row.check_in_distance_m is not none %}
+        &mdash; {{ "%.0f" | format(today_row.check_in_distance_m) }}m from office
+        {% endif %}
+      </p>
+    {% else %}
+      <form method="post" action="{{ url_for('attendance.mark_present') }}" id="mark-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="latitude" id="latitude">
+        <input type="hidden" name="longitude" id="longitude">
+        <button type="button" class="btn btn-primary" id="mark-btn" onclick="markPresent()">Mark Present</button>
+        {% if office_set %}
+        <span class="text-muted">You must be within 100m of the office to mark attendance.</span>
+        {% else %}
+        <span class="text-muted">Office location isn't configured yet &mdash; attendance will be marked without a location check.</span>
+        {% endif %}
+      </form>
+      <script>
+        function markPresent() {
+          var btn = document.getElementById('mark-btn');
+          btn.disabled = true;
+          btn.textContent = 'Getting location...';
+          if (!navigator.geolocation) {
+            document.getElementById('mark-form').submit();
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(
+            function (pos) {
+              document.getElementById('latitude').value = pos.coords.latitude;
+              document.getElementById('longitude').value = pos.coords.longitude;
+              document.getElementById('mark-form').submit();
+            },
+            function () {
+              alert('Location access was denied. Enable location permissions and try again.');
+              btn.disabled = false;
+              btn.textContent = 'Mark Present';
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+          );
+        }
+      </script>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Status</th>
+          <th>Check In</th>
+          <th>Distance from Office</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in month_rows %}
+        <tr>
+          <td>{{ r.date }}</td>
+          <td>
+            <span class="badge {{ 'badge-success' if r.status == 'present' else 'badge-muted' }}">
+              {{ r.status | replace("_", " ") | title }}
+            </span>
+          </td>
+          <td>{{ r.check_in.strftime("%H:%M") if r.check_in else "-" }}</td>
+          <td>{{ "%.0f" | format(r.check_in_distance_m) + "m" if r.check_in_distance_m is not none else "-" }}</td>
+        </tr>
+        {% else %}
+        <tr class="empty-row"><td colspan="4">No attendance records this month yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+{% endblock %}

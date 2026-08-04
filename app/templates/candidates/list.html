@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Candidates{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>Candidates</h1>
+    <a href="{{ url_for('candidates.create_candidate') }}" class="btn btn-primary">+ Add candidate</a>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Company</th>
+          <th>Email</th>
+          <th>Designation</th>
+          <th>Offer Date</th>
+          <th>Proposed Salary</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in candidates %}
+        <tr>
+          <td>{{ c.full_name }}</td>
+          <td>{{ c.company.name }}</td>
+          <td>{{ c.email }}</td>
+          <td>{{ c.designation.title if c.designation else "" }}</td>
+          <td>{{ c.offer_date }}</td>
+          <td>{{ c.proposed_salary }}</td>
+          <td>
+            <span class="badge {{ 'badge-success' if c.status == 'joined' else ('badge-muted' if c.status == 'rejected' else '') }}">
+              {{ c.status | title }}
+            </span>
+          </td>
+          <td class="actions">
+            <a href="{{ url_for('candidates.download_offer_letter', candidate_id=c.id) }}" class="btn-text">Offer Letter</a>
+            {% if c.status == 'offered' %}
+            <a href="{{ url_for('candidates.edit_candidate', candidate_id=c.id) }}" class="btn-text">Edit</a>
+            <form method="post" action="{{ url_for('candidates.mark_joined', candidate_id=c.id) }}" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="joining_date" value="">
+              <button type="submit" class="btn-text" onclick="return confirm('Convert ' + '{{ c.full_name }}' + ' to an employee?')">Mark Joined</button>
+            </form>
+            <form method="post" action="{{ url_for('candidates.reject_candidate', candidate_id=c.id) }}" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn-text-danger" onclick="return confirm('Mark this candidate as rejected?')">Reject</button>
+            </form>
+            {% elif c.status == 'joined' and c.employee_id %}
+            <a href="{{ url_for('employees.edit_employee', employee_id=c.employee_id) }}" class="btn-text">View Employee</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr class="empty-row"><td colspan="8">No candidates yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+{% endblock %}

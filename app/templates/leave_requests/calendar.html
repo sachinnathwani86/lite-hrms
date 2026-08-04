@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Leave Calendar{% endblock %}
+{% block content %}
+  <div class="page-header"><div><h1>Leave calendar</h1><p class="text-muted">Company holidays and planned leave in one view.</p></div><div class="calendar-actions"><a href="{{ url_for('leave_requests.calendar_view', month=previous_month[5:], year=previous_month[:4]) }}" class="btn btn-outline">&#8592;</a><strong>{{ month_label }}</strong><a href="{{ url_for('leave_requests.calendar_view', month=next_month[5:], year=next_month[:4]) }}" class="btn btn-outline">&#8594;</a><a href="{{ url_for('leave_requests.create_request') }}" class="btn btn-primary">+ Request leave</a></div></div>
+  <div class="card calendar-card"><div class="calendar-weekdays">{% for day in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}<span>{{ day }}</span>{% endfor %}</div><div class="calendar-grid">
+    {% for week in weeks %}{% for cell in week %}<div class="calendar-day {{ 'is-weekend' if cell and cell.date.weekday() > 4 else '' }}{% if cell and cell.date == today %} is-today{% endif %}">{% if cell %}<strong>{{ cell.date.day }}</strong>{% if cell.holiday %}<span class="calendar-event holiday-event">{{ cell.holiday.name }}</span>{% endif %}{% for r in cell.requests %}<span class="calendar-event {{ 'approved-event' if r.status == 'approved' else 'pending-event' }}">{% if current_user.is_admin() %}{{ r.employee.full_name }}: {% endif %}{{ r.leave_type.name }}</span>{% endfor %}{% endif %}</div>{% endfor %}{% endfor %}
+  </div></div>
+  <div class="calendar-legend"><span><i class="legend-dot holiday-dot"></i> Company holiday</span><span><i class="legend-dot approved-dot"></i> Approved leave</span><span><i class="legend-dot pending-dot"></i> Pending leave</span></div>
+{% endblock %}

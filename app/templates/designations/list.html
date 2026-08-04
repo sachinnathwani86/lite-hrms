@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Designations{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>Designations</h1>
+    <a href="{{ url_for('designations.create_designation') }}" class="btn btn-primary">+ Add designation</a>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Company</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in designations %}
+        <tr>
+          <td>{{ d.title }}</td>
+          <td>{{ d.company.name }}</td>
+          <td>
+            <span class="badge {{ 'badge-success' if d.is_active else 'badge-muted' }}">
+              {{ "Active" if d.is_active else "Inactive" }}
+            </span>
+          </td>
+          <td class="actions">
+            <a href="{{ url_for('designations.edit_designation', designation_id=d.id) }}" class="btn-text">Edit</a>
+            {% if d.is_active %}
+            <form method="post" action="{{ url_for('designations.delete_designation', designation_id=d.id) }}" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn-text-danger" onclick="return confirm('Deactivate this designation?')">Deactivate</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr class="empty-row"><td colspan="4">No designations yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
