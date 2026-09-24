@@ -14,6 +14,14 @@
         &mdash; {{ "%.0f" | format(today_row.check_in_distance_m) }}m from office
         {% endif %}
       </p>
+      {% if today_row.check_out %}
+      <p class="text-muted" style="margin-top:10px">Checked out at <b>{{ today_row.check_out.strftime("%H:%M") }}</b>{% if today_row.worked_hours is not none %} &mdash; {{ today_row.worked_hours }} hours worked{% endif %}</p>
+      {% else %}
+      <form method="post" action="{{ url_for('attendance.mark_checkout') }}" style="margin-top:12px">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline">Check Out</button>
+      </form>
+      {% endif %}
     {% else %}
       <form method="post" action="{{ url_for('attendance.mark_present') }}" id="mark-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -27,26 +35,43 @@
         {% endif %}
       </form>
       <script>
+        var OFFICE_SET = {{ 'true' if office_set else 'false' }};
+
         function markPresent() {
           var btn = document.getElementById('mark-btn');
+          var form = document.getElementById('mark-form');
           btn.disabled = true;
           btn.textContent = 'Getting location...';
-          if (!navigator.geolocation) {
-            document.getElementById('mark-form').submit();
+
+          function submitWith(pos) {
+            document.getElementById('latitude').value = pos.coords.latitude;
+            document.getElementById('longitude').value = pos.coords.longitude;
+            form.submit();
+          }
+
+          function failed() {
+            alert('Could not determine your location. Enable location services (GPS or network) and try again.');
+            btn.disabled = false;
+            btn.textContent = 'Mark Present';
+          }
+
+          // Without an office geofence, location isn't needed to mark attendance.
+          if (!OFFICE_SET || !navigator.geolocation) {
+            form.submit();
             return;
           }
+
+          // Try GPS first, then fall back to network/Wi-Fi/cell location.
           navigator.geolocation.getCurrentPosition(
-            function (pos) {
-              document.getElementById('latitude').value = pos.coords.latitude;
-              document.getElementById('longitude').value = pos.coords.longitude;
-              document.getElementById('mark-form').submit();
-            },
+            submitWith,
             function () {
-              alert('Location access was denied. Enable location permissions and try again.');
-              btn.disabled = false;
-              btn.textContent = 'Mark Present';
+              navigator.geolocation.getCurrentPosition(submitWith, failed, {
+                enableHighAccuracy: false,
+                timeout: 15000,
+                maximumAge: 300000
+              });
             },
-            { enableHighAccuracy: true, timeout: 10000 }
+            { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
           );
         }
       </script>
@@ -61,6 +86,8 @@
           <th>Date</th>
           <th>Status</th>
           <th>Check In</th>
+          <th>Check Out</th>
+          <th>Hours</th>
           <th>Distance from Office</th>
         </tr>
       </thead>
@@ -74,10 +101,12 @@
             </span>
           </td>
           <td>{{ r.check_in.strftime("%H:%M") if r.check_in else "-" }}</td>
+          <td>{{ r.check_out.strftime("%H:%M") if r.check_out else "-" }}</td>
+          <td>{{ r.worked_hours if r.worked_hours is not none else "-" }}</td>
           <td>{{ "%.0f" | format(r.check_in_distance_m) + "m" if r.check_in_distance_m is not none else "-" }}</td>
         </tr>
         {% else %}
-        <tr class="empty-row"><td colspan="4">No attendance records this month yet.</td></tr>
+        <tr class="empty-row"><td colspan="6">No attendance records this month yet.</td></tr>
         {% endfor %}
       </tbody>
     </table>

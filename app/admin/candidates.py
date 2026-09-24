@@ -91,10 +91,7 @@ def mark_joined(candidate_id):
         return redirect(url_for("candidates.list_candidates"))
 
     email = candidate.email
-    if not email:
-        flash("Add an email for this candidate before converting them to an employee.", "error")
-        return redirect(url_for("candidates.edit_candidate", candidate_id=candidate.id))
-    if Employee.query.filter_by(email=email, company_id=candidate.company_id).first():
+    if email and Employee.query.filter_by(email=email, company_id=candidate.company_id).first():
         flash(f"An employee with email '{email}' already exists at this company.", "error")
         return redirect(url_for("candidates.list_candidates"))
 
@@ -102,6 +99,7 @@ def mark_joined(candidate_id):
     emp = Employee(
         company_id=candidate.company_id,
         full_name=candidate.full_name,
+        username=_unique_username(candidate.company_id, candidate.full_name, email),
         email=email,
         role="employee",
         designation_id=candidate.designation_id,
@@ -154,6 +152,17 @@ def _candidate_or_404(candidate_id):
 def _to_email_or_none(value):
     value = (value or "").strip().lower()
     return value or None
+
+
+def _unique_username(company_id, full_name, email):
+    base = ((email or "").split("@")[0] or full_name or "employee").strip().lower()
+    base = "".join(ch for ch in base if ch.isalnum() or ch in "._-") or "employee"
+    username = base
+    suffix = 1
+    while Employee.query.filter(db.func.lower(Employee.username) == username.lower(), Employee.company_id == company_id).first():
+        suffix += 1
+        username = f"{base}{suffix}"
+    return username
 
 
 def _to_int_or_none(value):

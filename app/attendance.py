@@ -81,6 +81,23 @@ def mark_present():
     return redirect(url_for("attendance.my_attendance"))
 
 
+@attendance_bp.route("/checkout", methods=["POST"])
+@login_required
+def mark_checkout():
+    today = date.today()
+    row = Attendance.query.filter_by(employee_id=current_user.id, date=today).first()
+    if not row or not row.check_in:
+        flash("Mark your attendance first, then check out.", "error")
+        return redirect(url_for("attendance.my_attendance"))
+    if row.check_out:
+        flash("You've already checked out today.", "error")
+        return redirect(url_for("attendance.my_attendance"))
+    row.check_out = datetime.now().time()
+    db.session.commit()
+    flash("Checked out for today.", "success")
+    return redirect(url_for("attendance.my_attendance"))
+
+
 @attendance_bp.route("/admin")
 @login_required
 @approver_required

@@ -17,7 +17,7 @@
         <tr>
           <th>Name</th>
           <th>Company</th>
-          <th>Email</th>
+          <th>User ID / Email</th>
           <th>Role</th>
           <th>Designation</th>
           <th>Joined</th>
@@ -40,7 +40,7 @@
             </div>
           </td>
           <td>{{ emp.company.name }}</td>
-          <td>{{ emp.email }}</td>
+          <td>{{ emp.username }}{% if emp.email %}<br><small class="text-muted">{{ emp.email }}</small>{% endif %}</td>
           <td>{{ emp.role }}</td>
           <td>{{ emp.designation.title if emp.designation else "" }}</td>
           <td>{{ emp.date_of_joining }}</td>

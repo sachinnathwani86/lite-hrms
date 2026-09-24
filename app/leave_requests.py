@@ -13,11 +13,12 @@ from app.workspace import active_company_id
 leave_requests_bp = Blueprint("leave_requests", __name__, url_prefix="/leave-requests")
 
 
-def _business_days(start, end):
+def _business_days(start, end, holidays=None):
+    holidays = holidays or set()
     days = 0
     d = start
     while d <= end:
-        if d.weekday() < 5:  # Mon-Fri
+        if d.weekday() < 5 and d not in holidays:  # Mon-Fri, excluding holidays
             days += 1
         d += timedelta(days=1)
     return days
@@ -65,8 +66,6 @@ def create_request():
             flash("End date must be on or after the start date.", "error")
             return render_template("leave_requests/form.html", leave_types=leave_types)
 
-        days_count = _business_days(start_date, end_date)
-
         holiday_dates = {
             holiday.date for holiday in Holiday.query.filter(
                 Holiday.company_id == current_user.company_id,
@@ -74,14 +73,9 @@ def create_request():
                 Holiday.date <= end_date,
             ).all()
         }
-        if holiday_dates:
-            holiday_names = ", ".join(
-                holiday.name for holiday in Holiday.query.filter(
-                    Holiday.company_id == current_user.company_id,
-                    Holiday.date.in_(holiday_dates),
-                ).order_by(Holiday.date).all()
-            )
-            flash(f"Your leave range includes a company holiday: {holiday_names}.", "error")
+        days_count = _business_days(start_date, end_date, holiday_dates)
+        if days_count <= 0:
+            flash("That range has no working days — weekends and company holidays are excluded.", "error")
             return render_template("leave_requests/form.html", leave_types=leave_types)
 
         overlapping = LeaveRequest.query.filter(

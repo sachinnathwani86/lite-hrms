@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Payroll History{% endblock %}
 {% block content %}
-  <div class="page-header"><div><h1>Payroll history</h1><p class="text-muted">Review generated payslips and approve payroll records.</p></div></div>
+  <div class="page-header"><div><h1>Payroll history</h1><p class="text-muted">Review generated payslips and approve payroll records.</p></div><a href="{{ url_for('reports.payroll_csv') }}" class="btn btn-outline">Export CSV</a></div>
   <div class="card"><div class="table-wrap"><table><thead><tr><th>Employee</th><th>Period</th><th>Gross</th><th>Deductions</th><th>Net pay</th><th>Status</th><th></th></tr></thead><tbody>{% for run in runs %}<tr><td>{{ run.employee.full_name }}</td><td>{{ '%02d'|format(run.month) }}/{{ run.year }}</td><td>{{ run.gross }}</td><td>{{ run.deductions }}</td><td>{{ run.net_pay }}</td><td><span class="badge {{ 'badge-success' if run.status == 'approved' else 'badge-warning' }}">{{ run.status|title }}</span></td><td class="actions">{% if run.status != 'approved' %}<form method="post" action="{{ url_for('payroll_admin.approve', run_id=run.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn-text">Approve</button></form>{% endif %}</td></tr>{% else %}<tr class="empty-row"><td colspan="7">No payroll runs yet. Generate a payslip from an employee record.</td></tr>{% endfor %}</tbody></table></div></div>
 {% endblock %}

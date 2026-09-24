@@ -3,7 +3,7 @@ from datetime import date
 from flask import Blueprint, render_template
 from flask_login import current_user, login_required
 
-from app.models import Attendance, Employee, Holiday, LeaveRequest
+from app.models import Attendance, Employee, Holiday, LeaveBalance, LeaveRequest
 from app.workspace import active_company_id
 
 
@@ -30,6 +30,9 @@ def home():
     pending_count = leave_query.filter(LeaveRequest.status == "pending").count()
     upcoming_holidays = holiday_query.filter(Holiday.date >= today).order_by(Holiday.date).limit(5).all()
     recent_requests = leave_query.order_by(LeaveRequest.applied_on.desc()).limit(5).all()
+    balances = LeaveBalance.query.filter_by(
+        employee_id=current_user.id, year=today.year
+    ).all()
 
     return render_template(
         "dashboard.html",
@@ -38,6 +41,7 @@ def home():
         pending_count=pending_count,
         upcoming_holidays=upcoming_holidays,
         recent_requests=recent_requests,
+        balances=balances,
         today=today,
         company_name=current_user.company.name,
         is_admin=current_user.is_admin(),

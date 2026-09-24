@@ -19,7 +19,7 @@ from app.models import (
 )
 from app.admin import people_required
 from app.activity import record_audit
-from app.payroll import calculate_salary_breakup, calculate_lwp_deduction, resolve_employee_components, EARNING_COMPONENTS, DEDUCTION_COMPONENTS
+from app.payroll import calculate_salary_breakup, calculate_lwp_deduction, resolve_employee_components, build_payslip_data, EARNING_COMPONENTS, DEDUCTION_COMPONENTS
 from app.letters import appointment_letter, termination_letter, relieving_letter, payslip, fy_breakup_letter
 from app.workspace import active_company_id, ensure_active_company
 
@@ -37,7 +37,7 @@ def list_employees():
     status = request.args.get("status", "active")
     query = Employee.query.filter_by(company_id=active_company_id())
     if search:
-        query = query.filter(or_(Employee.full_name.ilike(f"%{search}%"), Employee.email.ilike(f"%{search}%")))
+        query = query.filter(or_(Employee.full_name.ilike(f"%{search}%"), Employee.username.ilike(f"%{search}%"), Employee.email.ilike(f"%{search}%")))
     if status == "active":
         query = query.filter_by(is_active=True)
     elif status == "inactive":
@@ -58,19 +58,23 @@ def import_employees():
 
         try:
             rows = csv.DictReader(io.TextIOWrapper(upload.stream, encoding="utf-8-sig"))
-            required = {"full_name", "email"}
+            required = {"full_name", "username"}
             if not rows.fieldnames or not required.issubset(set(rows.fieldnames)):
-                raise ValueError("CSV must include full_name, email, and company_id columns.")
+                raise ValueError("CSV must include full_name and username columns.")
             created = 0
             skipped = []
             for line_number, row in enumerate(rows, start=2):
                 full_name = (row.get("full_name") or "").strip()
-                email = (row.get("email") or "").strip().lower()
-                if not full_name or not email:
+                username = (row.get("username") or "").strip()
+                email = (row.get("email") or "").strip().lower() or None
+                if not full_name or not username:
                     skipped.append(f"row {line_number}: missing required value")
                     continue
                 company = Company.query.get(active_company_id())
-                if Employee.query.filter_by(email=email, company_id=company.id).first():
+                if Employee.query.filter(db.func.lower(Employee.username) == username.lower(), Employee.company_id == company.id).first():
+                    skipped.append(f"row {line_number}: duplicate user ID")
+                    continue
+                if email and Employee.query.filter_by(email=email, company_id=company.id).first():
                     skipped.append(f"row {line_number}: duplicate email")
                     continue
                 designation_id = int(row["designation_id"]) if row.get("designation_id") else None
@@ -82,6 +86,7 @@ def import_employees():
                 employee = Employee(
                     company_id=company.id,
                     full_name=full_name,
+                    username=username,
                     email=email,
                     role=(row.get("role") or "employee").strip(),
                     designation_id=designation_id,
@@ -119,15 +124,22 @@ def import_employees():
 @people_required
 def create_employee():
     if request.method == "POST":
-        email = request.form["email"].strip().lower()
         company_id = active_company_id()
-        if company_id != active_company_id():
-            flash("Select the active company workspace.", "error")
+        username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip().lower() or None
+        if not username:
+            flash("A user ID is required.", "error")
             return render_template(
                 "employees/form.html", employee=None,
                 designations=_active_designations(), companies=_active_companies()
             )
-        if Employee.query.filter_by(email=email, company_id=company_id).first():
+        if Employee.query.filter(db.func.lower(Employee.username) == username.lower(), Employee.company_id == company_id).first():
+            flash(f"An employee with user ID '{username}' already exists at this company.", "error")
+            return render_template(
+                "employees/form.html", employee=None,
+                designations=_active_designations(), companies=_active_companies()
+            )
+        if email and Employee.query.filter_by(email=email, company_id=company_id).first():
             flash(f"An employee with email '{email}' already exists at this company.", "error")
             return render_template(
                 "employees/form.html", employee=None,
@@ -145,6 +157,7 @@ def create_employee():
         emp = Employee(
             company_id=company_id,
             full_name=request.form["full_name"].strip(),
+            username=username,
             email=email,
             role=request.form.get("role", "employee"),
             designation_id=designation_id,
@@ -189,15 +202,30 @@ def edit_employee(employee_id):
     emp = _employee_or_404(employee_id)
 
     if request.method == "POST":
-        email = request.form["email"].strip().lower()
         company_id = active_company_id()
-        existing = Employee.query.filter_by(email=email, company_id=company_id).first()
-        if existing and existing.id != emp.id:
-            flash(f"An employee with email '{email}' already exists at this company.", "error")
+        username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip().lower() or None
+        if not username:
+            flash("A user ID is required.", "error")
             return render_template(
                 "employees/form.html", employee=emp,
                 designations=_active_designations(), companies=_active_companies()
             )
+        existing_username = Employee.query.filter(db.func.lower(Employee.username) == username.lower(), Employee.company_id == company_id).first()
+        if existing_username and existing_username.id != emp.id:
+            flash(f"An employee with user ID '{username}' already exists at this company.", "error")
+            return render_template(
+                "employees/form.html", employee=emp,
+                designations=_active_designations(), companies=_active_companies()
+            )
+        if email:
+            existing_email = Employee.query.filter_by(email=email, company_id=company_id).first()
+            if existing_email and existing_email.id != emp.id:
+                flash(f"An employee with email '{email}' already exists at this company.", "error")
+                return render_template(
+                    "employees/form.html", employee=emp,
+                    designations=_active_designations(), companies=_active_companies()
+                )
 
         designation_id = _to_int_or_none(request.form.get("designation_id"))
         if not _designation_matches_company(designation_id, company_id):
@@ -209,6 +237,7 @@ def edit_employee(employee_id):
 
         emp.company_id = company_id
         emp.full_name = request.form["full_name"].strip()
+        emp.username = username
         emp.email = email
         emp.role = request.form.get("role", "employee")
         emp.designation_id = designation_id
@@ -398,13 +427,7 @@ def download_payslip(employee_id):
             flash("Set a monthly gross or salary structure before generating a payslip.", "error")
             return redirect(url_for("employees.download_payslip", employee_id=emp.id))
 
-        gross = sum(earnings.values()) if earnings else Decimal("0")
-        unpaid_days = _unpaid_absent_days(emp, month, year)
-        lwp = calculate_lwp_deduction(gross, unpaid_days, calendar.monthrange(year, month)[1]) if unpaid_days else Decimal("0")
-        if lwp:
-            deductions["Loss of Pay"] = lwp
-        deductions_total = sum(deductions.values()) if deductions else Decimal("0")
-        net_pay = gross - deductions_total
+        earnings, deductions, gross, deductions_total, net_pay, unpaid_days = build_payslip_data(emp, month, year)
 
         # ponytail: no attendance/LWP data exists yet, so deductions here only
         # reflect configured salary-structure deduction components (e.g. PT).
@@ -484,24 +507,6 @@ def toggle_checklist(employee_id, item_id):
     item.completed = not item.completed
     db.session.commit()
     return redirect(url_for("employees.checklist", employee_id=employee_id))
-
-
-def _unpaid_absent_days(employee, month, year):
-    start = date(year, month, 1)
-    end = date(year, month, calendar.monthrange(year, month)[1])
-    approved_leave_dates = set()
-    for leave_request in LeaveRequest.query.filter_by(employee_id=employee.id, status="approved").all():
-        current = leave_request.start_date
-        while current <= leave_request.end_date:
-            approved_leave_dates.add(current)
-            current += timedelta(days=1)
-    absent = Attendance.query.filter(
-        Attendance.employee_id == employee.id,
-        Attendance.date >= start,
-        Attendance.date <= end,
-        Attendance.status == "absent",
-    ).all()
-    return sum(1 for row in absent if row.date not in approved_leave_dates)
 
 
 def _active_designations():

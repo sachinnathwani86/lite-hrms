@@ -1,10 +1,19 @@
 from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_user, logout_user, login_required, current_user
-from app.models import Company, Employee, LeaveType
+from app.models import Company, Employee, LeaveType, SalaryComponent
 from app.activity import record_audit
 from app.extensions import db
 
 auth_bp = Blueprint("auth", __name__)
+
+
+@auth_bp.route("/")
+def index():
+    if current_user.is_authenticated:
+        return redirect(url_for("dashboard.home"))
+    if not Company.query.filter_by(is_active=True).first():
+        return redirect(url_for("auth.setup"))
+    return redirect(url_for("auth.login"))
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
@@ -12,18 +21,20 @@ def login():
     if not Company.query.filter_by(is_active=True).first():
         return redirect(url_for("auth.setup"))
     if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
+        username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
         company = Company.query.filter_by(is_active=True).order_by(Company.id).first()
-        user = Employee.query.filter_by(
-            email=email, company_id=company.id, is_active=True
-        ).first() if company else None
+        user = Employee.query.filter(
+            db.func.lower(Employee.username) == username.lower(),
+            Employee.company_id == company.id,
+            Employee.is_active == True,
+        ).first() if company and username else None
 
         if user and user.check_password(password):
             login_user(user)
             return redirect(url_for("dashboard.home"))
 
-        flash("Invalid company, email, or password", "error")
+        flash("Invalid user ID or password", "error")
 
     return render_template("auth/login.html")
 
@@ -35,14 +46,15 @@ def setup():
     if request.method == "POST":
         company_name = request.form.get("company_name", "").strip()
         admin_name = request.form.get("admin_name", "").strip()
-        admin_email = request.form.get("admin_email", "").strip().lower()
+        admin_username = request.form.get("admin_username", "").strip()
+        admin_email = request.form.get("admin_email", "").strip().lower() or None
         password = request.form.get("password", "")
-        if not company_name or not admin_name or not admin_email:
-            flash("Company name, administrator name, and email are required.", "error")
+        if not company_name or not admin_name or not admin_username:
+            flash("Company name, administrator name, and user ID are required.", "error")
         elif len(password) < 8:
             flash("The administrator password must be at least 8 characters.", "error")
-        elif Employee.query.filter_by(email=admin_email).first():
-            flash("That administrator email is already in use.", "error")
+        elif Employee.query.filter(db.func.lower(Employee.username) == admin_username.lower()).first():
+            flash("That administrator user ID is already in use.", "error")
         else:
             company = Company(
                 name=company_name,
@@ -57,6 +69,7 @@ def setup():
             admin = Employee(
                 company_id=company.id,
                 full_name=admin_name,
+                username=admin_username,
                 email=admin_email,
                 role="admin",
             )
@@ -68,6 +81,9 @@ def setup():
                 dict(name="Earned", annual_quota=15, accrual_type="monthly", carry_forward=True, max_carry_forward=30),
             ]:
                 db.session.add(LeaveType(company_id=company.id, **values))
+            for component_name in ["Basic", "HRA", "Conveyance", "Medical Allowance", "Special Allowance"]:
+                db.session.add(SalaryComponent(company_id=company.id, name=component_name, category="earning"))
+            db.session.add(SalaryComponent(company_id=company.id, name="Professional Tax", category="deduction"))
             db.session.commit()
             flash("Setup complete. Sign in to continue.", "success")
             return redirect(url_for("auth.login"))

@@ -20,5 +20,10 @@
     <section class="card"><div class="section-heading"><div><span class="section-kicker">Planning</span><h2>Upcoming holidays</h2></div><a href="{{ url_for('holidays.list_holidays') }}" class="btn-text">Calendar</a></div>
       <div class="holiday-list">{% for h in upcoming_holidays %}<div class="holiday-item"><span class="holiday-date">{{ h.date.strftime('%d') }}<small>{{ h.date.strftime('%b') }}</small></span><span><strong>{{ h.name }}</strong><small>{{ h.company.name }}</small></span></div>{% else %}<p class="text-muted">No upcoming holidays configured.</p>{% endfor %}</div>
     </section>
+    <section class="card"><div class="section-heading"><div><span class="section-kicker">My work</span><h2>My leave balances</h2></div><a href="{{ url_for('leave_requests.list_my_requests') }}" class="btn-text">Request leave</a></div>
+      <div class="table-wrap"><table><thead><tr><th>Leave type</th><th>Available</th><th>Used</th></tr></thead><tbody>
+      {% for b in balances %}<tr><td>{{ b.leave_type.name }}</td><td>{{ b.available }}</td><td>{{ b.used }}</td></tr>{% else %}<tr class="empty-row"><td colspan="3">No leave balances yet.</td></tr>{% endfor %}
+      </tbody></table></div>
+    </section>
   </div>
 {% endblock %}

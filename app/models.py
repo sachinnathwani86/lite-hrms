@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import db
@@ -28,7 +28,8 @@ class Employee(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=False)
     full_name = db.Column(db.String(120), nullable=False)
-    email = db.Column(db.String(120), nullable=False)
+    username = db.Column(db.String(60), nullable=False)
+    email = db.Column(db.String(120), nullable=True)
     password_hash = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(20), default="employee")  # employee | admin
     designation_id = db.Column(db.Integer, db.ForeignKey("designations.id"), nullable=True)
@@ -40,6 +41,7 @@ class Employee(UserMixin, db.Model):
     termination_reason = db.Column(db.Text, nullable=True)
 
     __table_args__ = (
+        db.UniqueConstraint("company_id", "username", name="uq_company_username"),
         db.UniqueConstraint("company_id", "email", name="uq_company_email"),
     )
 
@@ -215,7 +217,7 @@ class LeaveRequest(db.Model):
     days_count = db.Column(db.Float, nullable=False)
     reason = db.Column(db.Text)
     status = db.Column(db.String(20), default="pending")  # pending | approved | rejected
-    applied_on = db.Column(db.DateTime, default=db.func.now())
+    applied_on = db.Column(db.DateTime, default=datetime.now)
     approved_by = db.Column(db.Integer, db.ForeignKey("employees.id"), nullable=True)
 
     approver = db.relationship("Employee", foreign_keys=[approved_by])
@@ -234,6 +236,16 @@ class Attendance(db.Model):
     check_in_longitude = db.Column(db.Float, nullable=True)
     check_in_distance_m = db.Column(db.Float, nullable=True)
 
+    @property
+    def worked_hours(self):
+        if not self.check_in or not self.check_out:
+            return None
+        start = self.check_in.hour * 3600 + self.check_in.minute * 60 + self.check_in.second
+        end = self.check_out.hour * 3600 + self.check_out.minute * 60 + self.check_out.second
+        if end < start:
+            return None
+        return round((end - start) / 3600, 2)
+
     __table_args__ = (
         db.UniqueConstraint("employee_id", "date", name="uq_emp_date"),
     )
@@ -250,7 +262,7 @@ class PayrollRun(db.Model):
     deductions = db.Column(db.Numeric(10, 2), default=0)
     net_pay = db.Column(db.Numeric(10, 2), nullable=False)
     payslip_path = db.Column(db.String(255), nullable=True)
-    generated_on = db.Column(db.DateTime, default=db.func.now())
+    generated_on = db.Column(db.DateTime, default=datetime.now)
     status = db.Column(db.String(20), default="draft", nullable=False)
     approved_by = db.Column(db.Integer, db.ForeignKey("employees.id"), nullable=True)
 
@@ -269,7 +281,7 @@ class EmployeeDocument(db.Model):
     title = db.Column(db.String(120), nullable=False)
     category = db.Column(db.String(30), nullable=False, default="other")
     filename = db.Column(db.String(255), nullable=False)
-    uploaded_on = db.Column(db.DateTime, default=db.func.now(), nullable=False)
+    uploaded_on = db.Column(db.DateTime, default=datetime.now, nullable=False)
 
 
 class AuditLog(db.Model):
@@ -282,7 +294,7 @@ class AuditLog(db.Model):
     entity = db.Column(db.String(40), nullable=False)
     entity_id = db.Column(db.Integer, nullable=True)
     details = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=db.func.now(), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
 
     company = db.relationship("Company")
     actor = db.relationship("Employee", foreign_keys=[actor_id])
@@ -297,7 +309,7 @@ class Notification(db.Model):
     message = db.Column(db.Text, nullable=False)
     link = db.Column(db.String(255), nullable=True)
     is_read = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=db.func.now(), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
 
     employee = db.relationship("Employee", backref=db.backref("notifications", lazy=True))
 
@@ -311,6 +323,6 @@ class EmployeeChecklistItem(db.Model):
     category = db.Column(db.String(30), nullable=False, default="onboarding")
     completed = db.Column(db.Boolean, default=False, nullable=False)
     due_date = db.Column(db.Date, nullable=True)
-    created_at = db.Column(db.DateTime, default=db.func.now(), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
 
     employee = db.relationship("Employee", backref=db.backref("checklist_items", lazy=True, cascade="all, delete-orphan"))

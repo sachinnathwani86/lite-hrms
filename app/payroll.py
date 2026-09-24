@@ -2,7 +2,11 @@
 Salary breakup for Indian payroll (PF excluded), used to auto-fill an
 employee's salary structure from a flat monthly gross figure.
 """
+import calendar
+from datetime import date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
+
+from app.models import Attendance, LeaveRequest
 
 BASIC_PERCENT_OF_GROSS = Decimal("0.45")   # Basic = 45% of Gross
 HRA_PERCENT_OF_BASIC = Decimal("0.50")     # HRA = 50% of Basic (metro city)
@@ -137,6 +141,43 @@ def calculate_lwp_deduction(monthly_gross, unpaid_days, days_in_month):
         raise ValueError("days_in_month must be positive")
     per_day = Decimal(monthly_gross) / Decimal(days_in_month)
     return _round(per_day * unpaid_days)
+
+
+def unpaid_absent_days(employee, month, year):
+    """Absent days in a month that are not covered by approved leave."""
+    start = date(year, month, 1)
+    end = date(year, month, calendar.monthrange(year, month)[1])
+    approved_leave_dates = set()
+    for leave_request in LeaveRequest.query.filter_by(employee_id=employee.id, status="approved").all():
+        current = leave_request.start_date
+        while current <= leave_request.end_date:
+            approved_leave_dates.add(current)
+            current += timedelta(days=1)
+    absent = Attendance.query.filter(
+        Attendance.employee_id == employee.id,
+        Attendance.date >= start,
+        Attendance.date <= end,
+        Attendance.status == "absent",
+    ).all()
+    return sum(1 for row in absent if row.date not in approved_leave_dates)
+
+
+def build_payslip_data(employee, month, year):
+    """
+    Components and totals for a monthly payslip, shared by admin and
+    self-service downloads. Returns
+    (earnings, deductions, gross, deductions_total, net_pay, lop_days).
+    """
+    earnings, deductions = resolve_employee_components(employee, month=month)
+    gross = sum(earnings.values()) if earnings else Decimal("0")
+    lop_days = unpaid_absent_days(employee, month, year)
+    if lop_days:
+        lwp = calculate_lwp_deduction(gross, lop_days, calendar.monthrange(year, month)[1])
+        if lwp:
+            deductions["Loss of Pay"] = lwp
+    deductions_total = sum(deductions.values()) if deductions else Decimal("0")
+    net_pay = gross - deductions_total
+    return earnings, deductions, gross, deductions_total, net_pay, lop_days
 
 
 def _demo():

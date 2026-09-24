@@ -8,7 +8,9 @@ from werkzeug.utils import secure_filename
 from app.admin import people_required
 from app.activity import record_audit
 from app.extensions import db
-from app.models import Employee, EmployeeDocument
+from app.letters import payslip
+from app.models import Employee, EmployeeDocument, PayrollRun
+from app.payroll import build_payslip_data
 from app.workspace import active_company_id
 
 
@@ -20,12 +22,10 @@ ALLOWED_DOCUMENT_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".doc", ".docx"}
 @login_required
 def profile():
     if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
-        existing = Employee.query.filter_by(email=email, company_id=current_user.company_id).first()
+        email = request.form.get("email", "").strip().lower() or None
+        existing = Employee.query.filter_by(email=email, company_id=current_user.company_id).first() if email else None
         if existing and existing.id != current_user.id:
             flash("That email address is already used in your company.", "error")
-        elif not email:
-            flash("Email is required.", "error")
         else:
             current_user.full_name = request.form.get("full_name", "").strip()
             current_user.email = email
@@ -99,6 +99,34 @@ def delete_document(document_id):
     db.session.commit()
     flash("Document removed.", "success")
     return redirect(url_for("self_service.profile"))
+
+
+@self_service_bp.route("/payslips")
+@login_required
+def payslips():
+    runs = PayrollRun.query.filter_by(
+        employee_id=current_user.id, status="approved"
+    ).order_by(PayrollRun.year.desc(), PayrollRun.month.desc()).all()
+    return render_template("self_service/payslips.html", runs=runs)
+
+
+@self_service_bp.route("/payslips/<int:run_id>")
+@login_required
+def download_payslip(run_id):
+    run = PayrollRun.query.filter_by(
+        id=run_id, employee_id=current_user.id, status="approved"
+    ).first_or_404()
+    earnings, deductions, gross, deductions_total, net_pay, lop_days = build_payslip_data(
+        current_user, run.month, run.year
+    )
+    pdf = payslip(
+        current_user, run.month, run.year, earnings, deductions,
+        gross, deductions_total, net_pay, lop_days=lop_days
+    )
+    return send_file(
+        pdf, mimetype="application/pdf", as_attachment=True,
+        download_name=f"payslip-{run.year}-{run.month:02d}.pdf"
+    )
 
 
 @self_service_bp.route("/password-reset/<int:employee_id>", methods=["POST"])

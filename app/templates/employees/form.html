@@ -34,8 +34,11 @@
       <label for="full_name">Full Name</label>
       <input type="text" id="full_name" name="full_name" value="{{ employee.full_name if employee else '' }}" required>
 
-      <label for="email">Email</label>
-      <input type="email" id="email" name="email" value="{{ employee.email if employee else '' }}" required>
+      <label for="username">User ID (login)</label>
+      <input type="text" id="username" name="username" value="{{ employee.username if employee else '' }}" required>
+
+      <label for="email">Email (optional)</label>
+      <input type="email" id="email" name="email" value="{{ employee.email if employee else '' }}">
 
       {% if not employee %}
       <label for="password">Password</label>
