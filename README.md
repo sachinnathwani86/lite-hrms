@@ -56,6 +56,15 @@ generated PDFs. Important environment variables include:
 - `DOCUMENT_UPLOAD_FOLDER`
 - `BACKUP_FOLDER`
 - `SESSION_COOKIE_SECURE=1` when served over HTTPS
+- `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_USE_TLS`,
+  `MAIL_USE_SSL`, `MAIL_DEFAULT_SENDER` to enable "Forgot password?" reset emails
+- `APP_BASE_URL` (e.g. `https://hr.example.com`) for links in emails, and
+  optionally `PASSWORD_RESET_MAX_AGE` in seconds (default 3600)
+
+Reset links are signed with `SECRET_KEY`, expire after `PASSWORD_RESET_MAX_AGE`,
+and stop working once the password changes. Without SMTP settings, users are
+told to contact HR. Server administrators can always set a password with
+`flask reset-password --email user@example.com`.
 
 ## Production
 
