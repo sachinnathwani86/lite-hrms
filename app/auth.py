@@ -1,8 +1,12 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash
+import hashlib
+
+from flask import Blueprint, current_app, render_template, redirect, url_for, request, flash
 from flask_login import login_user, logout_user, login_required, current_user
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from app.models import Company, Employee, LeaveType
 from app.activity import record_audit
 from app.extensions import db
+from app.mailer import mail_configured, send_email
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -102,3 +106,95 @@ def change_password():
             flash("Password updated successfully.", "success")
             return redirect(url_for("dashboard.home"))
     return render_template("auth/change_password.html")
+
+
+def _reset_serializer():
+    return URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt="password-reset")
+
+
+def _password_fingerprint(user):
+    # Tying the token to the current hash makes it single-use: it stops
+    # verifying as soon as the password changes.
+    return hashlib.sha256(user.password_hash.encode()).hexdigest()[:16]
+
+
+def _active_company():
+    return Company.query.filter_by(is_active=True).order_by(Company.id).first()
+
+
+def _user_from_reset_token(token):
+    try:
+        data = _reset_serializer().loads(
+            token, max_age=current_app.config["PASSWORD_RESET_MAX_AGE"]
+        )
+    except (SignatureExpired, BadSignature):
+        return None
+    company = _active_company()
+    if not company or not isinstance(data, dict):
+        return None
+    user = Employee.query.filter_by(
+        id=data.get("id"), company_id=company.id, is_active=True
+    ).first()
+    if not user or data.get("fp") != _password_fingerprint(user):
+        return None
+    return user
+
+
+@auth_bp.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if current_user.is_authenticated:
+        return redirect(url_for("auth.change_password"))
+    if request.method == "POST":
+        if not mail_configured():
+            flash("Password reset by email is not available. Please contact your HR administrator.", "error")
+            return render_template("auth/forgot_password.html")
+        email = request.form.get("email", "").strip().lower()
+        company = _active_company()
+        user = Employee.query.filter_by(
+            email=email, company_id=company.id, is_active=True
+        ).first() if company and email else None
+        if user:
+            token = _reset_serializer().dumps({"id": user.id, "fp": _password_fingerprint(user)})
+            path = url_for("auth.reset_password", token=token)
+            base_url = current_app.config.get("APP_BASE_URL")
+            link = f"{base_url}{path}" if base_url else url_for("auth.reset_password", token=token, _external=True)
+            minutes = current_app.config["PASSWORD_RESET_MAX_AGE"] // 60
+            try:
+                send_email(
+                    user.email,
+                    f"Reset your {company.name} HRMS password",
+                    f"Hello {user.full_name},\n\n"
+                    f"We received a request to reset your password. Use the link below "
+                    f"within {minutes} minutes to choose a new one:\n\n{link}\n\n"
+                    f"If you did not request this, you can ignore this email.\n",
+                )
+            except Exception:
+                current_app.logger.exception("Password reset email could not be sent (employee id %s)", user.id)
+                flash("We could not send the reset email right now. Please try again later.", "error")
+                return render_template("auth/forgot_password.html")
+        # Same response whether or not the email exists, to avoid account enumeration.
+        flash("If that email belongs to an active account, a password reset link has been sent.", "success")
+        return redirect(url_for("auth.login"))
+    return render_template("auth/forgot_password.html")
+
+
+@auth_bp.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    user = _user_from_reset_token(token)
+    if not user:
+        flash("This password reset link is invalid or has expired. Please request a new one.", "error")
+        return redirect(url_for("auth.forgot_password"))
+    if request.method == "POST":
+        new_password = request.form.get("new_password", "")
+        confirmation = request.form.get("confirm_password", "")
+        if len(new_password) < 8:
+            flash("Your new password must be at least 8 characters.", "error")
+        elif new_password != confirmation:
+            flash("The new passwords do not match.", "error")
+        else:
+            user.set_password(new_password)
+            record_audit(user, "reset_password", "employee", user.id, "Reset own password via email link")
+            db.session.commit()
+            flash("Your password has been reset. Sign in with your new password.", "success")
+            return redirect(url_for("auth.login"))
+    return render_template("auth/reset_password.html", token=token)

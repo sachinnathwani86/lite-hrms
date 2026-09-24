@@ -253,6 +253,7 @@ input[type=file] { width: 100%; padding: 8px 0; font-size: 13px; }
 .login-card h1, .login-card h2 { margin: 0 0 5px; font-size: 23px; }
 .login-card .subtitle { margin: 0 0 24px; color: var(--muted); font-size: 13px; }
 .login-card .btn { width: 100%; margin-top: 25px; }
+.login-link { margin: 16px 0 0; text-align: center; }
 .setup-wrap { display: flex; justify-content: center; padding: 48px 20px; }
 .setup-card { width: 100%; max-width: 560px; padding: 34px; border: 1px solid var(--line); border-radius: 16px; background: #fff; box-shadow: 0 20px 55px rgba(20,33,61,.09); }
 .setup-card h1 { margin: 10px 0 5px; font-size: 25px; }

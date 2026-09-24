@@ -66,6 +66,25 @@ def create_app(config_class=Config):
         changed = run_accrual(year, month)
         print(f"Updated {changed} leave balances.")
 
+    @app.cli.command("reset-password")
+    @click.option("--email", required=True, help="Login email of the employee.")
+    @click.password_option()
+    def reset_password_command(email, password):
+        """Set a new password for an employee (for server administrators)."""
+        from app.models import AuditLog
+        user = Employee.query.filter_by(email=email.strip().lower()).first()
+        if not user:
+            raise click.ClickException("No employee with that email.")
+        if len(password) < 8:
+            raise click.ClickException("The password must be at least 8 characters.")
+        user.set_password(password)
+        db.session.add(AuditLog(
+            company_id=user.company_id, action="reset_password", entity="employee",
+            entity_id=user.id, details="Password reset from the command line",
+        ))
+        db.session.commit()
+        print(f"Password updated for {user.email}.")
+
     @app.cli.command("backup-db")
     def backup_db_command():
         """Create a timestamped backup for the local SQLite database."""
